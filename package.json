@@ -1,0 +1,9 @@
+{
+  "name": "private-stock-research-db",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {"dev":"vite","build":"vite build","preview":"vite preview"},
+  "dependencies": {"@supabase/supabase-js":"^2.57.0","@vitejs/plugin-react":"^5.0.0","vite":"^7.1.0","typescript":"^5.9.0","react":"^19.1.0","react-dom":"^19.1.0","lucide-react":"^0.542.0"},
+  "devDependencies": {}
+}
