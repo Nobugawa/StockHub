@@ -7,6 +7,8 @@ import './account-recovery.js'
 
 const money = n => n == null ? '—' : new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(n)
 const pct = n => n == null ? '—' : `${Number(n).toFixed(1)}%`
+const score = n => n == null ? '—' : `${Number(n).toFixed(1)}/10`
+const light = s => s==='green'?'🟢':s==='yellow'?'🟡':s==='red'?'🔴':'⚪'
 
 function Login({onLogin}){
   const [email,setEmail]=useState('')
@@ -41,10 +43,25 @@ function App(){
 
 function AddStock({onClose,onSaved}){const [f,setF]=useState({ticker:'',company_name:'',sector:'',industry:'',business_overview:'',status:'watch'});const save=async()=>{const payload={...f,ticker:f.ticker.trim().toUpperCase()};const {error}=await supabase.from('stocks').insert(payload);if(error)alert(error.message);else onSaved()};return <div className="modal-back"><div className="modal"><h2>Add candidate</h2><div className="form-grid"><input className="input" placeholder="Ticker" value={f.ticker} onChange={e=>setF({...f,ticker:e.target.value})}/><input className="input" placeholder="Company name" value={f.company_name} onChange={e=>setF({...f,company_name:e.target.value})}/><input className="input" placeholder="Sector" value={f.sector} onChange={e=>setF({...f,sector:e.target.value})}/><input className="input" placeholder="Industry" value={f.industry} onChange={e=>setF({...f,industry:e.target.value})}/><textarea className="textarea full" rows="5" placeholder="What the business does" value={f.business_overview} onChange={e=>setF({...f,business_overview:e.target.value})}/></div><div className="toolbar" style={{justifyContent:'flex-end'}}><button className="btn" onClick={onClose}>Cancel</button><button className="btn primary" onClick={save}>Save candidate</button></div></div></div>}
 
-function StockDetail({stock,onClose}){const [tab,setTab]=useState('overview'),[snapshots,setSnapshots]=useState([]),[technicals,setTechnicals]=useState([]),[news,setNews]=useState([]),[insiders,setInsiders]=useState([]),[institutions,setInstitutions]=useState([])
- useEffect(()=>{Promise.all([supabase.from('research_snapshots').select('*').eq('stock_id',stock.id).order('as_of_date',{ascending:false}),supabase.from('technical_snapshots').select('*,screen_definitions(name)').eq('stock_id',stock.id).order('as_of_date',{ascending:false}),supabase.from('news_items').select('*').eq('stock_id',stock.id).order('published_at',{ascending:false}),supabase.from('insider_activity').select('*').eq('stock_id',stock.id).order('transaction_date',{ascending:false}),supabase.from('institutional_activity').select('*').eq('stock_id',stock.id).order('as_of_date',{ascending:false})]).then(rs=>{setSnapshots(rs[0].data||[]);setTechnicals(rs[1].data||[]);setNews(rs[2].data||[]);setInsiders(rs[3].data||[]);setInstitutions(rs[4].data||[])})},[stock.id])
- const tabs=['overview','fundamentals','technical','news','insiders','institutions']
+function Scorecard({rows}){
+ if(!rows.length)return <p className="muted">No scorecard saved yet.</p>
+ const x=rows[0]
+ return <div><div className="grid" style={{marginBottom:12}}>
+   <div className="card"><div className="muted">Technical setup</div><div className="metric">{score(x.technical_setup)}</div></div>
+   <div className="card"><div className="muted">Fundamental support</div><div className="metric">{score(x.fundamental_support)}</div></div>
+   <div className="card"><div className="muted">Bottom confirmed</div><div className="metric">{score(x.bottom_confirmation)}</div></div>
+   <div className="card"><div className="muted">RSI7 screen</div><div className="metric">{score(x.screen_effectiveness)}</div></div>
+ </div>
+ <div className="card" style={{marginBottom:12}}><div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center'}}><div><div className="muted">My read • {x.as_of_date}</div><h3 style={{margin:'4px 0'}}>{x.rank_label||'WATCH'}</h3></div><div className="metric">{score(x.overall_score)}</div></div><div className="snapshot">{x.summary}</div></div>
+ <div className="table-wrap"><table className="table"><thead><tr><th>Factor</th><th>Read</th></tr></thead><tbody>{(x.factors||[]).map((f,i)=><tr key={i}><td>{f.factor}</td><td>{light(f.status)} {f.note}</td></tr>)}</tbody></table></div>
+ {x.source_notes&&<p className="muted" style={{marginTop:10}}>{x.source_notes}</p>}</div>
+}
+
+function StockDetail({stock,onClose}){const [tab,setTab]=useState('scorecard'),[scorecards,setScorecards]=useState([]),[snapshots,setSnapshots]=useState([]),[technicals,setTechnicals]=useState([]),[news,setNews]=useState([]),[insiders,setInsiders]=useState([]),[institutions,setInstitutions]=useState([])
+ useEffect(()=>{Promise.all([supabase.from('research_scorecards').select('*').eq('stock_id',stock.id).order('as_of_date',{ascending:false}),supabase.from('research_snapshots').select('*').eq('stock_id',stock.id).order('as_of_date',{ascending:false}),supabase.from('technical_snapshots').select('*,screen_definitions(name)').eq('stock_id',stock.id).order('as_of_date',{ascending:false}),supabase.from('news_items').select('*').eq('stock_id',stock.id).order('published_at',{ascending:false}),supabase.from('insider_activity').select('*').eq('stock_id',stock.id).order('transaction_date',{ascending:false}),supabase.from('institutional_activity').select('*').eq('stock_id',stock.id).order('as_of_date',{ascending:false})]).then(rs=>{setScorecards(rs[0].data||[]);setSnapshots(rs[1].data||[]);setTechnicals(rs[2].data||[]);setNews(rs[3].data||[]);setInsiders(rs[4].data||[]);setInstitutions(rs[5].data||[])})},[stock.id])
+ const tabs=['scorecard','overview','fundamentals','technical','news','insiders','institutions']
  return <div className="detail card"><div style={{display:'flex',justifyContent:'space-between',gap:10}}><div><h2 style={{margin:'0 0 5px'}}><span className="ticker">{stock.ticker}</span> — {stock.company_name}</h2><div className="muted">{stock.sector} {stock.industry&&`• ${stock.industry}`}</div></div><button className="btn" onClick={onClose}>Close</button></div><div className="tabs">{tabs.map(t=><button key={t} className={'tab '+(tab===t?'active':'')} onClick={()=>setTab(t)}>{t}</button>)}</div>
+ {tab==='scorecard'&&<Scorecard rows={scorecards}/>} 
  {tab==='overview'&&<div className="snapshot">{stock.business_overview||'No business overview saved yet.'}</div>}
  {tab==='fundamentals'&&<div>{snapshots.map(x=><div className="card" key={x.id} style={{marginBottom:10}}><b>{x.as_of_date}</b><div className="snapshot">{x.summary}</div></div>)}{!snapshots.length&&<p className="muted">No fundamentals snapshots yet.</p>}</div>}
  {tab==='technical'&&<div>{technicals.map(x=><div className="card" key={x.id} style={{marginBottom:10}}><b>{x.as_of_date} • {x.screen_definitions?.name||'Technical review'}</b> {x.passed!=null&&<span className={'pill '+(x.passed?'good':'warn')}>{x.passed?'PASS':'NO PASS'}</span>}<div className="snapshot">{x.summary}</div></div>)}{!technicals.length&&<p className="muted">No technical snapshots yet.</p>}</div>}
