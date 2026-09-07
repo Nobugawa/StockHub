@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { Eye, EyeOff, LogOut, Plus, RefreshCw, Search } from 'lucide-react'
 import { supabase } from './supabase'
 import './styles.css'
+import './account-recovery.js'
 
 const money = n => n == null ? '—' : new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(n)
 const pct = n => n == null ? '—' : `${Number(n).toFixed(1)}%`
